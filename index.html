@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="title">sisProject</div>
+
+    <div id="top-right-controls">
+        <button id="add-btn">Add item</button>
+        <button id="delete-btn" disabled>Delete</button>
+    </div>
+
+    <div id="items"></div>
+
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 20px; }
+        #title { position: fixed; top: 12px; left: 12px; font-size: 1.5em; font-weight: bold; }
+        #top-right-controls { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
+        #top-right-controls button { padding: 8px 10px; }
+        #items { margin-top: 60px; max-width: 900px; }
+        .item-box { border: 1px solid #333; padding: 10px; margin-bottom: 8px; border-radius: 6px; background: #fff; cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; }
+        .item-box.selected { background: #e6f0ff; border-color: #3b66ff; }
+        .item-meta { font-size: 0.9em; color: #555; }
+
+        /* simple modal */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+        .modal { background: white; padding: 16px; border-radius: 6px; min-width: 280px; max-width: 540px; width: 100%; box-shadow: 0 6px 24px rgba(0,0,0,0.2); box-sizing: border-box; }
+        .modal, .modal * { box-sizing: border-box; }
+        .modal h3 { margin: 0 0 8px 0; }
+        .modal label { display:block; margin-bottom:6px; font-weight:600; }
+        .modal input[type="text"], .modal input[type="number"] { width:100%; max-width:100%; padding:8px; margin-bottom:10px; box-sizing: border-box; }
+        .modal-actions { display:flex; gap:8px; justify-content:flex-end; }
+    </style>
+
+    <!-- Add Modal -->
+    <div id="add-modal" class="modal-backdrop">
+        <div class="modal">
+            <h3>Add Item</h3>
+            <label>Name</label>
+            <input id="add-name" type="text" />
+            <label>Quantity</label>
+            <input id="add-qty" type="number" min="1" value="1" />
+            <div class="modal-actions">
+                <button id="add-cancel">Cancel</button>
+                <button id="add-confirm">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal-backdrop">
+        <div class="modal">
+            <h3>Edit Item</h3>
+            <label>Name</label>
+            <input id="edit-name" type="text" />
+            <label>Quantity</label>
+            <input id="edit-qty" type="number" min="1" />
+            <div class="modal-actions">
+                <button id="edit-cancel">Cancel</button>
+                <button id="edit-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div id="confirm-modal" class="modal-backdrop">
+        <div class="modal">
+            <h3>Confirm Delete</h3>
+            <div id="confirm-text">Delete selected items?</div>
+            <div class="modal-actions">
+                <button id="confirm-cancel">Cancel</button>
+                <button id="confirm-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let nextId = 1;
+        const addBtn = document.getElementById('add-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+        const itemsEl = document.getElementById('items');
+
+        const addModal = document.getElementById('add-modal');
+        const addName = document.getElementById('add-name');
+        const addQty = document.getElementById('add-qty');
+        const addConfirm = document.getElementById('add-confirm');
+        const addCancel = document.getElementById('add-cancel');
+
+        const editModal = document.getElementById('edit-modal');
+        const editName = document.getElementById('edit-name');
+        const editQty = document.getElementById('edit-qty');
+        const editSave = document.getElementById('edit-save');
+        const editCancel = document.getElementById('edit-cancel');
+        let editingId = null;
+
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmText = document.getElementById('confirm-text');
+        const confirmDelete = document.getElementById('confirm-delete');
+        const confirmCancel = document.getElementById('confirm-cancel');
+
+        addBtn.addEventListener('click', () => openAddModal());
+        addCancel.addEventListener('click', () => closeModal(addModal));
+        addConfirm.addEventListener('click', addFromModal);
+
+        editCancel.addEventListener('click', () => closeModal(editModal));
+        editSave.addEventListener('click', saveEdit);
+
+        deleteBtn.addEventListener('click', () => openConfirmModal());
+        confirmCancel.addEventListener('click', () => closeModal(confirmModal));
+        confirmDelete.addEventListener('click', performDelete);
+
+        function openAddModal() {
+            addName.value = '';
+            addQty.value = 1;
+            showModal(addModal);
+            addName.focus();
+        }
+
+        function addFromModal() {
+            const name = addName.value.trim();
+            const qty = parseInt(addQty.value, 10) || 1;
+            if (!name) return;
+            createItem(name, qty);
+            closeModal(addModal);
+        }
+
+        function openEditModal(id) {
+            const el = document.querySelector(`[data-id="${id}"]`);
+            if (!el) return;
+            editingId = id;
+            editName.value = el.dataset.name;
+            editQty.value = el.dataset.qty;
+            showModal(editModal);
+            editName.focus();
+        }
+
+        function saveEdit() {
+            if (!editingId) return;
+            const el = document.querySelector(`[data-id="${editingId}"]`);
+            if (!el) return closeModal(editModal);
+            const name = editName.value.trim();
+            const qty = parseInt(editQty.value, 10) || 1;
+            el.dataset.name = name;
+            el.dataset.qty = qty;
+            el.querySelector('.item-name').textContent = name;
+            el.querySelector('.item-qty').textContent = `Qty: ${qty}`;
+            editingId = null;
+            closeModal(editModal);
+        }
+
+        function openConfirmModal() {
+            const selected = getSelectedElements();
+            if (selected.length === 0) return;
+            confirmText.textContent = `Delete ${selected.length} selected item(s)?`;
+            showModal(confirmModal);
+        }
+
+        function performDelete() {
+            const selected = getSelectedElements();
+            selected.forEach(el => el.remove());
+            closeModal(confirmModal);
+            updateDeleteState();
+        }
+
+        function createItem(name, qty) {
+            const id = `i${nextId++}`;
+            const box = document.createElement('div');
+            box.className = 'item-box';
+            box.dataset.id = id;
+            box.dataset.name = name;
+            box.dataset.qty = qty;
+            box.innerHTML = `<div><div class="item-name">${escapeHtml(name)}</div><div class="item-meta item-qty">Qty: ${qty}</div></div>`;
+
+            box.addEventListener('click', (e) => handleItemClick(e, box));
+            box.addEventListener('dblclick', () => { openEditModal(id); });
+
+            itemsEl.appendChild(box);
+            updateDeleteState();
+        }
+
+        function handleItemClick(e, el) {
+            const multi = e.ctrlKey || e.metaKey;
+            if (multi) {
+                el.classList.toggle('selected');
+            } else {
+                const others = itemsEl.querySelectorAll('.item-box.selected');
+                others.forEach(o => { if (o !== el) o.classList.remove('selected'); });
+                el.classList.toggle('selected');
+            }
+            updateDeleteState();
+        }
+
+        function getSelectedElements() {
+            return Array.from(itemsEl.querySelectorAll('.item-box.selected'));
+        }
+
+        function updateDeleteState() {
+            const selected = getSelectedElements();
+            deleteBtn.disabled = selected.length === 0;
+        }
+
+        function showModal(modal) { modal.style.display = 'flex'; }
+        function closeModal(modal) { modal.style.display = 'none'; }
+
+        function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+
+        // small demo items
+
+    </script>
+</body>
+</html>
