@@ -6,33 +6,68 @@
     <title>Document</title>
 </head>
 <body>
-    <div id="title">sisProject</div>
+    <nav id="sub-nav">
+        <span id="nav-title">sisProject</span>
 
-    <div id="top-right-controls">
-        <button id="add-btn">Add item</button>
-        <button id="delete-btn" disabled>Delete</button>
+        <div class="nav-links">
+            <a href="index-view.html">view</a>
+            <a href="index.html">dashboard</a>
+        </div>
+
+    </nav>
+
+    <aside id="filter-box">
+        <h4>Filters</h4>
+        <!-- placeholder for future filters -->
+    </aside>
+    <div id="main-content">
+        <div id="top-right-controls">
+            <button id="add-btn">Add item</button>
+            <button id="delete-btn" disabled>Delete</button>
+        </div>
+    
+        <div id="items"></div>
+
     </div>
-
-    <div id="items"></div>
-
+    
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; }
-        #title { position: fixed; top: 12px; left: 12px; font-size: 1.5em; font-weight: bold; }
-        #top-right-controls { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
+        body { font-family: sans-serif; margin: 0; padding: 0; }
+        #sub-nav { position: fixed; top: 0; left: 0; right: 0; height: 40px; display: flex; gap: 12px; align-items: center; padding: 8px 12px; background: #fff; border-bottom: 1px solid #ddd; z-index: 100; justify-content: space-between; }
+        #nav-title { font-size: 1.2em; font-weight: bold; }
+        
+        /* Filter box: 15% width, almost reaches nav with small gap, fixed left side */
+        #filter-box { position: fixed; top: 50px; left: 0; width: 15%; height: calc(100vh - 50px); padding: 20px; border-right: 1px solid #ddd; background: #fafafa; box-sizing: border-box; overflow-y: auto; }
+        #filter-box h4 { margin: 0 0 8px 0; }
+        
+        /* Main content container */
+#main-content {
+    margin-left: 15%; /* sidebar width */
+    padding: 1rem;     /* inner padding */
+    padding-top: 6rem; /* space for nav + buttons */
+    box-sizing: border-box;
+}
+
+/* Buttons */
+
+/* Items */
+
+
+        /* Items area: pushed right to account for filter box */
+        #items { border: 1px solid rgb(205, 205, 205); padding: 1rem; box-sizing: border-box; min-height: 500px; background: #fafafa; position: relative; top: 30px;}
+        
+        #top-right-controls { position: fixed; top: 75px; right: 12px; display: flex; gap: 8px; z-index: 50; }
         #top-right-controls button { padding: 8px 10px; }
-        #items { margin-top: 60px; max-width: 900px; }
         .item-box { border: 1px solid #333; padding: 10px; margin-bottom: 8px; border-radius: 6px; background: #fff; cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; }
         .item-box.selected { background: #e6f0ff; border-color: #3b66ff; }
         .item-meta { font-size: 0.9em; color: #555; }
 
         /* simple modal */
-        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
-        .modal { background: white; padding: 16px; border-radius: 6px; min-width: 280px; max-width: 540px; width: 100%; box-shadow: 0 6px 24px rgba(0,0,0,0.2); box-sizing: border-box; }
-        .modal, .modal * { box-sizing: border-box; }
-        .modal h3 { margin: 0 0 8px 0; }
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; }
+        .modal { background: white; padding: 16px; border-radius: 6px; min-width: 300px; box-shadow: 0 6px 24px rgba(0,0,0,0.2); }
         .modal label { display:block; margin-bottom:6px; font-weight:600; }
-        .modal input[type="text"], .modal input[type="number"] { width:100%; max-width:100%; padding:8px; margin-bottom:10px; box-sizing: border-box; }
+        .modal input[type="text"], .modal input[type="number"] { width:100%; padding:8px; margin-bottom:10px; }
         .modal-actions { display:flex; gap:8px; justify-content:flex-end; }
+
     </style>
 
     <!-- Add Modal -->
