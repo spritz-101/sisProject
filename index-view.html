@@ -22,6 +22,71 @@
         body { font-family: sans-serif; margin: 0; padding: 0; }
         #sub-nav { position: fixed; top: 0; left: 0; right: 0; height: 40px; display: flex; gap: 12px; align-items: center; padding: 8px 12px; background: #fff; border-bottom: 1px solid #ddd; z-index: 100; justify-content: space-between; }
         #nav-title { font-size: 1.2em; font-weight: bold; }
+        #items { margin-top: 60px; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .card { border: 1px solid #ddd; border-radius: 8px; background: #fff; padding: 12px; display: flex; flex-direction: column; gap: 8px; position: relative; }
+        .thumb { width: 120px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; align-self: center; background: #f7f7f7; }
+        .name { font-weight: 600; }
+        .meta { color: #555; font-size: 0.9em; }
+        .badges { position: absolute; bottom: 8px; right: 8px; }
+        .badge { padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; color: #fff; }
+        .ok { background: #2e7d32; }
+        .low { background: #c62828; }
     </style>
+
+    <script>
+    const STORAGE_KEY = 'sis.items.v1';
+    const itemsEl = document.getElementById('items');
+
+    function loadItems() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return [];
+            const arr = JSON.parse(raw);
+            return Array.isArray(arr) ? arr : [];
+        } catch { return []; }
+    }
+
+    function render() {
+        const items = loadItems();
+        itemsEl.innerHTML = '';
+        items.forEach(it => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const img = document.createElement('img');
+            img.className = 'thumb';
+            if (it.photoDataUrl) { img.src = it.photoDataUrl; }
+            const name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = it.name || '';
+            const qty = document.createElement('div');
+            qty.className = 'meta';
+            qty.textContent = `Qty: ${parseInt(it.qty,10)||0}`;
+            const extra = document.createElement('div');
+            extra.className = 'meta';
+            extra.textContent = it.meta || '';
+            const badgeWrap = document.createElement('div');
+            badgeWrap.className = 'badges';
+            const b = document.createElement('span');
+            const last = parseInt(it.lastStock,10)||0;
+            const q = parseInt(it.qty,10)||0;
+            if (last > 0 && q < 0.5*last) { b.className = 'badge low'; b.textContent = 'Low stock'; }
+            else { b.className = 'badge ok'; b.textContent = 'Available'; }
+            badgeWrap.appendChild(b);
+            if (it.photoDataUrl) card.appendChild(img);
+            card.appendChild(name);
+            card.appendChild(qty);
+            if (it.meta) card.appendChild(extra);
+            card.appendChild(badgeWrap);
+            itemsEl.appendChild(card);
+        });
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') render();
+    });
+    window.addEventListener('storage', (e) => { if (e.key === STORAGE_KEY) render(); });
+
+    render();
+    </script>
 </body>
 </html>

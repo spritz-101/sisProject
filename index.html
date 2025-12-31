@@ -22,8 +22,14 @@
     </aside>
     <div id="main-content">
         <div id="top-right-controls">
-            <button id="add-btn">Add item</button>
-            <button id="delete-btn" disabled>Delete</button>
+            <div class="controls-left">
+                <input id="search-input" type="text" placeholder="Search items..." />
+            </div>
+            <div class="controls-right" style="display:flex; gap:8px; align-items:center;">
+                <button id="add-btn">Add item</button>
+                <button id="delete-btn" disabled>Delete</button>
+                <button id="view-toggle" title="Toggle view">Grid</button>
+            </div>
         </div>
     
         <div id="items"></div>
@@ -43,7 +49,7 @@
 #main-content {
     margin-left: 15%; /* sidebar width */
     padding: 1rem;     /* inner padding */
-    padding-top: 6rem; /* space for nav + buttons */
+    padding-top: 9rem; /* space for nav + buttons */
     box-sizing: border-box;
 }
 
@@ -53,21 +59,67 @@
 
 
         /* Items area: pushed right to account for filter box */
-        #items { border: 1px solid rgb(205, 205, 205); padding: 1rem; box-sizing: border-box; min-height: 500px; background: #fafafa; position: relative; top: 30px;}
+        #items {
+            border: 1px solid rgb(205, 205, 205);
+            padding: 1rem;
+            box-sizing: border-box;
+            min-height: calc(101vh - 170px); /* reach near bottom without own scrollbar */
+            background: #fafafa;
+            overflow: visible; /* let the page scroll, not the panel */
+        }
+        /* Grid (square) view */
+        #items.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+        /* List view */
+        #items.list { display: block; }
         
-        #top-right-controls { position: fixed; top: 75px; right: 12px; display: flex; gap: 8px; z-index: 50; }
+        #top-right-controls { position: fixed; top: 75px; left: 15%; right: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; z-index: 50; }
         #top-right-controls button { padding: 8px 10px; }
-        .item-box { border: 1px solid #333; padding: 10px; margin-bottom: 8px; border-radius: 6px; background: #fff; cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; }
+        #search-input { width: 260px; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; margin-left: 16px; }
+        .item-box {
+            border: 1px solid #333;
+            padding: 12px;
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            height: 200px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+            position: relative;
+        }
+        /* List layout overrides */
+        #items.list .item-box { height: auto; flex-direction: row; align-items: center; gap: 12px; padding: 10px; margin-bottom: 8px; }
+        #items.list .item-thumb { width: 48px; height: 48px; }
+        #items.list .item-text { margin-top: 0; }
+        #items.list .item-name, #items.list .item-qty { text-align: left; padding-left: 0; }
+        #items.list .item-badges { position: static; margin-left: auto; }
+        .item-box:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .item-box.selected { background: #e6f0ff; border-color: #3b66ff; }
+        .item-thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; display: none; background: #f1f1f1; }
         .item-box.selected { background: #e6f0ff; border-color: #3b66ff; }
         .item-meta { font-size: 0.9em; color: #555; }
+        .item-text { margin-top: auto; align-self: stretch; }
+        .item-name { font-weight: 600; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 6px; }
+        .item-qty { text-align: left; padding-left: 6px; }
+        .item-badges { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; }
+        .badge { padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; color: #fff; }
+        .badge.ok { background: #2e7d32; }
+        .badge.low { background: #c62828; }
 
         /* simple modal */
-        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; }
-        .modal { background: white; padding: 16px; border-radius: 6px; min-width: 300px; box-shadow: 0 6px 24px rgba(0,0,0,0.2); }
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal { background: white; padding: 16px; border-radius: 6px; min-width: 300px; max-width: min(90vw, 560px); width: fit-content; margin: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.2); }
+        body.modal-open { overflow: hidden; }
         .modal label { display:block; margin-bottom:6px; font-weight:600; }
-        .modal input[type="text"], .modal input[type="number"] { width:100%; padding:8px; margin-bottom:10px; }
+        .modal input[type="text"], .modal input[type="number"] { width:93%; padding:8px; margin-bottom:10px; }
         .modal-actions { display:flex; gap:8px; justify-content:flex-end; }
 
+        
     </style>
 
     <!-- Add Modal -->
@@ -78,6 +130,22 @@
             <input id="add-name" type="text" />
             <label>Quantity</label>
             <input id="add-qty" type="number" min="1" value="1" />
+            <label>Photo (optional)</label>
+            <input id="add-photo" type="file" accept="image/*" />
+            <div style="display:flex;align-items:center;gap:8px;margin:6px 0 10px;">
+                <img id="add-photo-preview" alt="preview" style="display:none;width:60px;height:60px;object-fit:cover;border:1px solid #ddd;border-radius:4px;" />
+                <button type="button" id="add-photo-clear" style="display:none;">Remove photo</button>
+            </div>
+
+            <div id="bond-inline" style="display:none; margin:8px 0;">
+                <label>Bond paper size</label>
+                <select id="bond-select" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                    <option value="">Select size…</option>
+                    <option value="Letter (8.5 × 11 in | 216 × 279 mm)">Letter — 8.5 × 11 in (216 × 279 mm)</option>
+                    <option value="A4 (8.27 × 11.69 in | 210 × 297 mm)">A4 — 8.27 × 11.69 in (210 × 297 mm)</option>
+                    <option value="Legal (8.5 × 14 in | 216 × 356 mm)">Legal — 8.5 × 14 in (216 × 356 mm)</option>
+                </select>
+            </div>
             <div class="modal-actions">
                 <button id="add-cancel">Cancel</button>
                 <button id="add-confirm">Add</button>
@@ -93,6 +161,12 @@
             <input id="edit-name" type="text" />
             <label>Quantity</label>
             <input id="edit-qty" type="number" min="1" />
+            <label>Photo (optional)</label>
+            <input id="edit-photo" type="file" accept="image/*" />
+            <div style="display:flex;align-items:center;gap:8px;margin:6px 0 10px;">
+                <img id="edit-photo-preview" alt="preview" style="display:none;width:60px;height:60px;object-fit:cover;border:1px solid #ddd;border-radius:4px;" />
+                <button type="button" id="edit-photo-clear" style="display:none;">Remove photo</button>
+            </div>
             <div class="modal-actions">
                 <button id="edit-cancel">Cancel</button>
                 <button id="edit-save">Save</button>
@@ -112,23 +186,34 @@
         </div>
     </div>
 
+    <script src="storage.js"></script>
     <script>
         let nextId = 1;
         const addBtn = document.getElementById('add-btn');
         const deleteBtn = document.getElementById('delete-btn');
         const itemsEl = document.getElementById('items');
+        const viewToggleBtn = document.getElementById('view-toggle');
+        const searchInput = document.getElementById('search-input');
 
         const addModal = document.getElementById('add-modal');
         const addName = document.getElementById('add-name');
         const addQty = document.getElementById('add-qty');
         const addConfirm = document.getElementById('add-confirm');
         const addCancel = document.getElementById('add-cancel');
+        const addPhoto = document.getElementById('add-photo');
+        const addPhotoPreview = document.getElementById('add-photo-preview');
+        const addPhotoClear = document.getElementById('add-photo-clear');
+        const bondInline = document.getElementById('bond-inline');
+        const bondSelect = document.getElementById('bond-select');
 
         const editModal = document.getElementById('edit-modal');
         const editName = document.getElementById('edit-name');
         const editQty = document.getElementById('edit-qty');
         const editSave = document.getElementById('edit-save');
         const editCancel = document.getElementById('edit-cancel');
+        const editPhoto = document.getElementById('edit-photo');
+        const editPhotoPreview = document.getElementById('edit-photo-preview');
+        const editPhotoClear = document.getElementById('edit-photo-clear');
         let editingId = null;
 
         const confirmModal = document.getElementById('confirm-modal');
@@ -139,26 +224,57 @@
         addBtn.addEventListener('click', () => openAddModal());
         addCancel.addEventListener('click', () => closeModal(addModal));
         addConfirm.addEventListener('click', addFromModal);
+        addPhoto.addEventListener('change', () => handlePhotoSelect(addPhoto, addPhotoPreview, addPhotoClear));
+        addPhotoClear.addEventListener('click', () => clearPhoto(addPhoto, addPhotoPreview, addPhotoClear));
+        addName.addEventListener('input', handleBondNameType);
 
         editCancel.addEventListener('click', () => closeModal(editModal));
         editSave.addEventListener('click', saveEdit);
+        editPhoto.addEventListener('change', () => handlePhotoSelect(editPhoto, editPhotoPreview, editPhotoClear));
+        editPhotoClear.addEventListener('click', () => clearPhoto(editPhoto, editPhotoPreview, editPhotoClear));
 
         deleteBtn.addEventListener('click', () => openConfirmModal());
         confirmCancel.addEventListener('click', () => closeModal(confirmModal));
         confirmDelete.addEventListener('click', performDelete);
+        // initialize default view to grid
+        itemsEl.classList.add('grid');
+        viewToggleBtn.addEventListener('click', toggleViewMode);
+        searchInput.addEventListener('input', filterItems);
+
+        // load persisted items
+        const initialItems = SisStorage.loadItems();
+        if (initialItems.length) {
+            renderItems(initialItems);
+            // set nextId based on max numeric id
+            const maxId = initialItems.reduce((m, it) => Math.max(m, parseInt((it.id||'').replace(/^i/,''))||0), 0);
+            nextId = Math.max(nextId, maxId + 1);
+        }
 
         function openAddModal() {
             addName.value = '';
             addQty.value = 1;
+            clearPhoto(addPhoto, addPhotoPreview, addPhotoClear);
+            if (bondInline) bondInline.style.display = 'none';
+            if (bondSelect) bondSelect.value = '';
             showModal(addModal);
             addName.focus();
         }
 
         function addFromModal() {
-            const name = addName.value.trim();
+            let name = addName.value.trim();
             const qty = parseInt(addQty.value, 10) || 1;
             if (!name) return;
-            createItem(name, qty);
+            name = toTitleCase(name);
+            const photoDataUrl = addPhotoPreview.dataset.src || '';
+            let meta = '';
+            if (isBondPaperName(name)) {
+                const val = bondSelect ? bondSelect.value : '';
+                if (!val) { alert('Please select a bond paper size.'); return; }
+                meta = val;
+            }
+            // For initial creation, lastStock defaults to qty
+            createItem(name, qty, photoDataUrl, qty, meta);
+            persistFromDom();
             closeModal(addModal);
         }
 
@@ -168,6 +284,15 @@
             editingId = id;
             editName.value = el.dataset.name;
             editQty.value = el.dataset.qty;
+            // preload existing photo
+            if (el.dataset.photo) {
+                editPhotoPreview.src = el.dataset.photo;
+                editPhotoPreview.style.display = 'inline-block';
+                editPhotoPreview.dataset.src = el.dataset.photo;
+                editPhotoClear.style.display = 'inline-block';
+            } else {
+                clearPhoto(editPhoto, editPhotoPreview, editPhotoClear);
+            }
             showModal(editModal);
             editName.focus();
         }
@@ -176,12 +301,28 @@
             if (!editingId) return;
             const el = document.querySelector(`[data-id="${editingId}"]`);
             if (!el) return closeModal(editModal);
-            const name = editName.value.trim();
+            const name = toTitleCase(editName.value.trim());
             const qty = parseInt(editQty.value, 10) || 1;
+            const photoDataUrl = editPhotoPreview.dataset.src || '';
+            // keep lastStock if present; otherwise initialize to qty; bump up if restocked higher
+            const prevLast = parseInt(el.dataset.lastStock || qty, 10);
+            const newLastStock = Math.max(prevLast, qty);
             el.dataset.name = name;
             el.dataset.qty = qty;
+            el.dataset.lastStock = newLastStock;
+            el.dataset.photo = photoDataUrl;
             el.querySelector('.item-name').textContent = name;
             el.querySelector('.item-qty').textContent = `Qty: ${qty}`;
+            const thumb = el.querySelector('img.item-thumb');
+            if (photoDataUrl) {
+                thumb.src = photoDataUrl;
+                thumb.style.display = 'inline-block';
+            } else {
+                thumb.removeAttribute('src');
+                thumb.style.display = 'none';
+            }
+            updateAvailabilityBadge(el);
+            persistFromDom();
             editingId = null;
             closeModal(editModal);
         }
@@ -198,21 +339,33 @@
             selected.forEach(el => el.remove());
             closeModal(confirmModal);
             updateDeleteState();
+            persistFromDom();
         }
 
-        function createItem(name, qty) {
+        function createItem(name, qty, photoDataUrl = '', lastStock = qty, meta = '') {
             const id = `i${nextId++}`;
             const box = document.createElement('div');
             box.className = 'item-box';
             box.dataset.id = id;
             box.dataset.name = name;
             box.dataset.qty = qty;
-            box.innerHTML = `<div><div class="item-name">${escapeHtml(name)}</div><div class="item-meta item-qty">Qty: ${qty}</div></div>`;
+            box.dataset.lastStock = lastStock;
+            if (photoDataUrl) box.dataset.photo = photoDataUrl;
+            if (meta) box.dataset.meta = meta;
+            box.innerHTML = `
+                <img class="item-thumb" ${photoDataUrl ? `src="${photoDataUrl}" style="display:inline-block;"` : ''} />
+                <div class="item-text">
+                    <div class="item-name">${escapeHtml(name)}</div>
+                    <div class="item-meta item-qty">Qty: ${qty}</div>
+                    ${meta ? `<div class="item-meta">${escapeHtml(meta)}</div>` : ''}
+                </div>
+                <div class="item-badges"><span class="badge"></span></div>`;
 
             box.addEventListener('click', (e) => handleItemClick(e, box));
             box.addEventListener('dblclick', () => { openEditModal(id); });
 
             itemsEl.appendChild(box);
+            updateAvailabilityBadge(box);
             updateDeleteState();
         }
 
@@ -234,11 +387,118 @@
 
         function updateDeleteState() {
             const selected = getSelectedElements();
-            deleteBtn.disabled = selected.length === 0;
+            // Only consider visible selected items for delete
+            const anyVisibleSelected = selected.some(el => el.style.display !== 'none');
+            deleteBtn.disabled = !anyVisibleSelected;
         }
 
-        function showModal(modal) { modal.style.display = 'flex'; }
-        function closeModal(modal) { modal.style.display = 'none'; }
+        function filterItems() {
+            const q = (searchInput.value || '').trim().toLowerCase();
+            const boxes = itemsEl.querySelectorAll('.item-box');
+            boxes.forEach(box => {
+                const name = (box.dataset.name || '').toLowerCase();
+                const meta = (box.dataset.meta || '').toLowerCase();
+                const qty = `qty: ${box.dataset.qty || ''}`;
+                const hay = `${name} ${meta} ${qty}`;
+                box.style.display = hay.includes(q) ? '' : 'none';
+            });
+            updateDeleteState();
+        }
+
+        function toggleViewMode() {
+            const isGrid = itemsEl.classList.contains('grid');
+            if (isGrid) {
+                itemsEl.classList.remove('grid');
+                itemsEl.classList.add('list');
+                viewToggleBtn.textContent = 'List';
+            } else {
+                itemsEl.classList.remove('list');
+                itemsEl.classList.add('grid');
+                viewToggleBtn.textContent = 'Grid';
+            }
+        }
+
+        function updateAvailabilityBadge(el) {
+            const qty = parseInt(el.dataset.qty, 10) || 0;
+            const last = parseInt(el.dataset.lastStock || qty, 10);
+            const badge = el.querySelector('.badge');
+            if (!badge) return;
+            // Low stock if below 50% of last stock
+            if (last > 0 && qty < 0.5 * last) {
+                badge.textContent = 'Low stock';
+                badge.classList.add('low');
+                badge.classList.remove('ok');
+            } else {
+                badge.textContent = 'Available';
+                badge.classList.add('ok');
+                badge.classList.remove('low');
+            }
+        }
+
+        function showModal(modal) { modal.style.display = 'flex'; document.body.classList.add('modal-open'); }
+        function closeModal(modal) { modal.style.display = 'none'; document.body.classList.remove('modal-open'); }
+
+        function isBondPaperName(name) {
+            return /\bbond\s*paper\b/i.test(name);
+        }
+        function handleBondNameType() {
+            const isBond = isBondPaperName(addName.value);
+            if (bondInline) bondInline.style.display = isBond ? 'block' : 'none';
+            if (!isBond && bondSelect) bondSelect.value = '';
+        }
+
+        function handlePhotoSelect(input, previewImg, clearBtn) {
+            const [file] = input.files;
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                previewImg.src = e.target.result;
+                previewImg.dataset.src = e.target.result;
+                previewImg.style.display = 'inline-block';
+                clearBtn.style.display = 'inline-block';
+            };
+            reader.readAsDataURL(file);
+        }
+        function clearPhoto(input, previewImg, clearBtn) {
+            input.value = '';
+            delete previewImg.dataset.src;
+            previewImg.removeAttribute('src');
+            previewImg.style.display = 'none';
+            clearBtn.style.display = 'none';
+        }
+
+        function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+        function toTitleCase(s) { return s.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()); }
+
+        // persistence
+                function serializeFromDom() {
+            const boxes = Array.from(itemsEl.querySelectorAll('.item-box'));
+            return boxes.map(b => ({
+                id: b.dataset.id,
+                name: b.dataset.name,
+                qty: parseInt(b.dataset.qty,10)||0,
+                lastStock: parseInt(b.dataset.lastStock,10)||0,
+                photoDataUrl: b.dataset.photo || '',
+                meta: b.dataset.meta || ''
+            }));
+        }
+        function renderItems(items) {
+            itemsEl.innerHTML = '';
+            items.forEach(it => {
+                const idStr = it.id && /^i\d+$/.test(it.id) ? it.id : `i${nextId++}`;
+                // ensure nextId keeps increasing if using provided id
+                const n = parseInt(idStr.replace(/^i/, ''))||0; nextId = Math.max(nextId, n+1);
+                createItem(it.name || '', parseInt(it.qty,10)||0, it.photoDataUrl||'', parseInt(it.lastStock,10)||0, it.meta||'');
+                const box = itemsEl.lastElementChild;
+                box.dataset.id = idStr;
+            });
+            updateDeleteState();    
+        }
+        function persistFromDom() {
+            const items = serializeFromDom();
+            SisStorage.saveItems(items);
+        }
+ { modal.style.display = 'none'; }
 
         function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
 
