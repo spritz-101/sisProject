@@ -6,3 +6,5 @@ hoping its use is for
 
 
 ## this is for a school project
+> this is 99.99% vibe coded
+
