@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
     <title>Document</title>
 </head>
 <body>
@@ -99,6 +99,34 @@
             gap: 12px;
             align-items: start;
         }
+        /* Uniform grid cards: fix overall height and bottom area */
+        #items.grid .item-box {
+            width: 100%;
+            max-width: 100%;
+            height: 260px;             /* fixed card height for uniformity */
+            display: grid;             /* allow defining top/bottom rows */
+            grid-template-rows: 1fr auto; /* square top grows, bottom fixed */
+        }
+        #items.grid .item-card-top { min-height: 0; }
+        #items.grid .item-card-bottom {
+            padding: 10px;
+            min-height: 72px;         /* reserve space for name + meta */
+            max-height: 72px;
+            overflow: hidden;
+        }
+        /* Clamp lines to avoid overflow differences */
+        #items.grid .item-name {
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        #items.grid .item-meta {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
         /* List view */
         #items.list { display: block; }
         
@@ -150,13 +178,22 @@
             gap: 6px;
         }
         /* List layout overrides */
-        #items.list .item-box { flex-direction: row; align-items: center; gap: 12px; padding: 10px; }
-        #items.list .item-card-top { width: 64px; aspect-ratio: 1 / 1; border-radius: 6px; overflow: hidden; }
-        #items.list .item-card-bottom { padding: 0; }
+        #items.list { display: block; }
+        #items.list .item-box {
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            width: 100%;            /* stretch row to container width */
+            box-sizing: border-box; /* include padding in width */
+            max-width: none;        /* prevent grid width constraint */
+        }
+        #items.list .item-card-top { width: 64px; height: 64px; min-height: 64px; max-height: 64px; flex: 0 0 64px; aspect-ratio: auto; border-radius: 6px; overflow: hidden; }
+        #items.list .item-card-bottom { padding: 0; flex: 1 1 auto; min-width: 0; }
         #items.list .item-thumb { display: block; position: static; width: 100%; height: 100%; object-fit: cover; }
 
         .item-box:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
-        .item-box.selected { background: #e6f0ff; border-color: #3b66ff; }
+        .item-box.selected { background: #e6f0ff; border-color: #3b66ff; box-shadow: 0 0 0 2px rgba(59,102,255,0.35) inset; }
         .item-meta { font-size: 0.9em; color: #555; }
         .item-text { align-self: stretch; }
         .item-name { font-weight: 700; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -180,6 +217,12 @@
         body.dark-amoled #filter-box { background: #000; border-right-color: #222; }
         body.dark-amoled #items { background: #000; border-color: #222; }
         body.dark-amoled .item-box { background: #0b0b0b; border-color: #222; box-shadow: none; }
+        /* Dark mode: stronger selected affordance */
+        body.dark-amoled .item-box.selected {
+            background: #0d1a33;              /* darker blue-tinted background */
+            border-color: #3b66ff;            /* strong blue border */
+            box-shadow: 0 0 0 2px #2d4fe6 inset, 0 0 0 1px #3b66ff; /* inner and subtle outer */
+        }
         body.dark-amoled .item-card-top { background: #111; }
         body.dark-amoled .item-meta { color: #b5b5b5; }
         body.dark-amoled input, body.dark-amoled button, body.dark-amoled select { background: #0b0b0b; color: #e6e6e6; border: 1px solid #333; }
@@ -187,6 +230,8 @@
         body.dark-amoled .modal { background: #0b0b0b; color: #e6e6e6; border-color: #333; }
         body.dark-amoled .badge.ok { background: #1b5e20; }
         body.dark-amoled .badge.low { background: #8e0000; }
+        /* Improve touch handling for double-tap */
+        .item-box { touch-action: manipulation; }
     </style>
 
     <!-- Add Modal -->
@@ -483,8 +528,8 @@
             persistFromDom();
         }
 
-        function createItem(name, qty, photoDataUrl = '', lastStock = qty, meta = '') {
-            const id = `i${nextId++}`;
+        function createItem(name, qty, photoDataUrl = '', lastStock = qty, meta = '', itemId = null) {
+            const id = (itemId && /^i\d+$/.test(itemId)) ? itemId : `i${nextId++}`;
             const box = document.createElement('div');
             box.className = 'item-box';
             box.dataset.id = id;
@@ -505,7 +550,32 @@
                 <div class="item-badges"><span class="badge"></span></div>`;
 
             box.addEventListener('click', (e) => handleItemClick(e, box));
-            box.addEventListener('dblclick', () => { openEditModal(id); });
+            box.addEventListener('dblclick', () => { openEditModal(box.dataset.id); });
+            // Touch support: double-tap to edit
+            addDoubleTapListener(box, () => { openEditModal(box.dataset.id); });
+            addLongPressListener(box, () => { openEditModal(box.dataset.id); });
+            // Consume next synthetic click after double-tap and detect fast double-clicks (capture phase)
+            box.addEventListener('click', (e) => {
+                // consume synthetic click after touch-based double tap/long press
+                if (box.__consumeNextClick) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    box.__consumeNextClick = false;
+                    return;
+                }
+                // generic fast double-click detection fallback (covers devices that only emit 'click')
+                const now = Date.now();
+                if (box.__lastClickTime && (now - box.__lastClickTime) <= 350) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    box.__recentDoubleTap = true;
+                    openEditModal(box.dataset.id);
+                    box.__consumeNextClick = true; // consume any further synthetic clicks
+                    box.__lastClickTime = 0;
+                    return;
+                }
+                box.__lastClickTime = now;
+            }, true);
 
             itemsEl.appendChild(box);
             updateAvailabilityBadge(box);
@@ -513,6 +583,8 @@
         }
 
         function handleItemClick(e, el) {
+            // If a double-tap just triggered edit, skip selection toggle
+            if (el.__recentDoubleTap) { el.__recentDoubleTap = false; return; }
             const multi = e.ctrlKey || e.metaKey;
             if (multi) {
                 el.classList.toggle('selected');
@@ -669,6 +741,100 @@
         function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
         function toTitleCase(s) { return s.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()); }
 
+        // Unified double-tap helper (prefers PointerEvents, falls back to touch)
+        function addDoubleTapListener(el, handler, delay = 380, maxDist = 50) {
+            let lastTapTime = 0;
+            let lastX = 0, lastY = 0;
+            let tapTimer = null;
+
+            function processTap(x, y, prevent) {
+                const now = Date.now();
+                const dt = now - lastTapTime;
+                const dist = Math.hypot(x - lastX, y - lastY);
+                if (dt <= delay && dist <= maxDist) {
+                    if (typeof prevent === 'function') prevent();
+                    el.__recentDoubleTap = true;
+                    handler();
+                    el.__consumeNextClick = true;
+                    lastTapTime = 0;
+                    if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+                } else {
+                    lastTapTime = now;
+                    lastX = x; lastY = y;
+                    if (tapTimer) clearTimeout(tapTimer);
+                    tapTimer = setTimeout(() => { lastTapTime = 0; }, delay + 50);
+                }
+            }
+
+            if (window.PointerEvent) {
+                el.addEventListener('pointerup', function(e) {
+                    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+                    processTap(e.clientX, e.clientY, () => { if (e.cancelable) e.preventDefault(); e.stopPropagation(); });
+                }, { passive: false });
+            } else {
+                el.addEventListener('touchend', function(e) {
+                    if (!e.changedTouches || e.changedTouches.length !== 1) return;
+                    const t = e.changedTouches[0];
+                    processTap(t.clientX, t.clientY, () => { if (e.cancelable) e.preventDefault(); e.stopPropagation(); });
+                }, { passive: false });
+            }
+        }
+
+        // Long-press fallback to open edit on touch
+        function addLongPressListener(el, handler, pressDelay = 550, maxDist = 18) {
+            let startX = 0, startY = 0;
+            let timer = null;
+            let active = false;
+
+            function start(x, y) {
+                startX = x; startY = y; active = true;
+                timer = setTimeout(() => {
+                    if (!active) return;
+                    el.__recentDoubleTap = true;
+                    handler();
+                    el.__consumeNextClick = true;
+                    active = false;
+                }, pressDelay);
+            }
+            function move(x, y) {
+                if (!active) return;
+                if (Math.hypot(x - startX, y - startY) > maxDist) cancel();
+            }
+            function cancel() {
+                active = false;
+                if (timer) { clearTimeout(timer); timer = null; }
+            }
+
+            if (window.PointerEvent) {
+                el.addEventListener('pointerdown', (e) => {
+                    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+                    start(e.clientX, e.clientY);
+                }, { passive: true });
+                el.addEventListener('pointermove', (e) => {
+                    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+                    move(e.clientX, e.clientY);
+                }, { passive: true });
+                el.addEventListener('pointerup', (e) => {
+                    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+                    cancel();
+                }, { passive: true });
+                el.addEventListener('pointercancel', cancel, { passive: true });
+            } else {
+                el.addEventListener('touchstart', (e) => {
+                    if (!e.touches || e.touches.length !== 1) return;
+                    const t = e.touches[0];
+                    start(t.clientX, t.clientY);
+                }, { passive: true });
+                el.addEventListener('touchmove', (e) => {
+                    if (!e.touches || e.touches.length !== 1) return;
+                    const t = e.touches[0];
+                    move(t.clientX, t.clientY);
+                }, { passive: true });
+                el.addEventListener('touchend', cancel, { passive: true });
+                el.addEventListener('touchcancel', cancel, { passive: true });
+            }
+        }
+
         // persistence
         function serializeFromDom() {
             const boxes = Array.from(itemsEl.querySelectorAll('.item-box'));
@@ -687,9 +853,7 @@
                 const idStr = it.id && /^i\d+$/.test(it.id) ? it.id : `i${nextId++}`;
                 // ensure nextId keeps increasing if using provided id
                 const n = parseInt(idStr.replace(/^i/, ''))||0; nextId = Math.max(nextId, n+1);
-                createItem(it.name || '', parseInt(it.qty,10)||0, it.photoDataUrl||'', parseInt(it.lastStock,10)||0, it.meta||'');
-                const box = itemsEl.lastElementChild;
-                box.dataset.id = idStr;
+                createItem(it.name || '', parseInt(it.qty,10)||0, it.photoDataUrl||'', parseInt(it.lastStock,10)||0, it.meta||'', idStr);
             });
             updateDeleteState();    
         }
