@@ -8,15 +8,15 @@
 <body>
     <nav id="sub-nav">
         <span id="nav-title">sisProject</span>
+        <div id="nav-links" style="display:flex; gap:10px; align-items:center;">
+            <a href="index.html">dashboard</a>
+            <a href="index-view.html">view</a>
+            <a href="#" id="settings-btn" title="Settings">settings</a>
+        </div>
     </nav>
 
     <aside id="filter-box">
-        <div id="side-nav" style="margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
-            <a href="index-view.html">view</a>
-            <a href="index.html">dashboard</a>
-            <a href="#" id="settings-btn" title="Toggle settings">settings</a>
-        </div>
-        <h4 id="filter-title">Filters</h4>
+                <h4 id="filter-title">Filters</h4>
         <div id="filters-content" style="display:flex; flex-direction:column; gap:8px;">
             <label style="display:flex; align-items:center; gap:6px;">
                 <input type="checkbox" id="filter-available" checked /> Available
@@ -26,26 +26,11 @@
             </label>
         </div>
         <hr style="margin:12px 0; border:none; border-top:1px solid #ddd;" />
-        <section id="settings-section" style="display:none;">
-            <h4 style="display:flex;align-items:center;gap:8px; margin-top:0;">Settings</h4>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                <div>
-                    <label style="display:block; font-weight:600; margin-bottom:4px;">View mode</label>
-                    <button id="view-toggle" title="Toggle view">Grid</button>
-                </div>
-                <div>
-                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
-                        <input type="checkbox" id="dark-mode-toggle" />
-                        Enable AMOLED dark mode
-                    </label>
-                </div>
-                <div>
-                    <label style="display:block; font-weight:600; margin-bottom:4px;">Low stock threshold</label>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span id="threshold-display">50%</span>
-                        <button id="edit-threshold-btn">Change…</button>
-                    </div>
-                </div>
+        <section id="threshold-section">
+            <h4 style="display:flex;align-items:center;gap:8px; margin-top:0;">Low stock threshold</h4>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span id="threshold-display">50%</span>
+                <button id="edit-threshold-btn">Change…</button>
             </div>
         </section>
     </aside>
@@ -312,6 +297,28 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-backdrop">
+        <div class="modal">
+            <h3>Settings</h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:4px;">View mode</label>
+                    <button id="view-toggle" title="Toggle view">Grid</button>
+                </div>
+                <div>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
+                        <input type="checkbox" id="dark-mode-toggle" />
+                        Enable AMOLED dark mode
+                    </label>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="settings-close">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="storage.js"></script>
     <script>
         let nextId = 1;
@@ -382,27 +389,15 @@
         // Settings interactions
         settingsBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            const showing = settingsSection.style.display !== 'none';
-            if (showing) {
-                // hide settings, show filters
-                settingsSection.style.display = 'none';
-                filterTitle.style.display = '';
-                filtersContent.style.display = 'flex';
-            } else {
-                // show settings, hide filters
-                settingsSection.style.display = '';
-                filterTitle.style.display = 'none';
-                filtersContent.style.display = 'none';
-                settingsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                settingsSection.style.boxShadow = '0 0 0 2px #3b66ff inset';
-                setTimeout(() => { settingsSection.style.boxShadow = ''; }, 800);
-            }
+            showModal(document.getElementById('settings-modal'));
         });
         viewToggleBtn.addEventListener('click', toggleViewMode);
         editThresholdBtn.addEventListener('click', openThresholdModal);
         thresholdCancel.addEventListener('click', () => closeModal(thresholdModal));
         thresholdSave.addEventListener('click', saveThreshold);
         darkToggle.addEventListener('change', toggleDarkMode);
+        const settingsClose = document.getElementById('settings-close');
+        if (settingsClose) settingsClose.addEventListener('click', () => closeModal(document.getElementById('settings-modal')));
 
         searchInput.addEventListener('input', filterItems);
         filterToggleBtn.addEventListener('click', () => {

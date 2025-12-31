@@ -1,0 +1,11 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "SwingWebApp",
+            "request": "launch",
+            "mainClass": "SwingWebApp",
+            "projectName": "sisProject_eecae37f"
+        }
+    ]
+}

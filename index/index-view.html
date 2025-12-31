@@ -8,14 +8,14 @@
 <body>
     <nav id="sub-nav">
         <span id="nav-title">sisProject</span>
+        <div id="nav-links" style="display:flex; gap:10px; align-items:center;">
+            <a href="index.html">dashboard</a>
+            <a href="index-view.html">view</a>
+            <a href="#" id="settings-btn" title="Settings">settings</a>
+        </div>
     </nav>
 
     <aside id="filter-box">
-        <div id="side-nav" style="margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
-            <a href="index-view.html">view</a>
-            <a href="index.html">dashboard</a>
-            <a href="#" id="settings-btn" title="Toggle settings">settings</a>
-        </div>
         <h4 id="filter-title">Filters</h4>
         <div id="filters-content" style="display:flex; flex-direction:column; gap:8px;">
             <label style="display:flex; align-items:center; gap:6px;">
@@ -26,26 +26,11 @@
             </label>
         </div>
         <hr style="margin:12px 0; border:none; border-top:1px solid #ddd;" />
-        <section id="settings-section" style="display:none;">
-            <h4 style="display:flex;align-items:center;gap:8px; margin-top:0;">Settings</h4>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                <div>
-                    <label style="display:block; font-weight:600; margin-bottom:4px;">View mode</label>
-                    <button id="view-toggle" title="Toggle view">Grid</button>
-                </div>
-                <div>
-                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
-                        <input type="checkbox" id="dark-mode-toggle" />
-                        Enable AMOLED dark mode
-                    </label>
-                </div>
-                <div>
-                    <label style="display:block; font-weight:600; margin-bottom:4px;">Low stock threshold</label>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span id="threshold-display">50%</span>
-                        <button id="edit-threshold-btn">Change…</button>
-                    </div>
-                </div>
+        <section id="threshold-section">
+            <h4 style="display:flex;align-items:center;gap:8px; margin-top:0;">Low stock threshold</h4>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span id="threshold-display">50%</span>
+                <button id="edit-threshold-btn">Change…</button>
             </div>
         </section>
     </aside>
@@ -59,6 +44,28 @@
             <div class="controls-right" style="display:flex; gap:8px; align-items:center;"></div>
         </div>
         <div id="items"></div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-backdrop" style="display:none; align-items:center; justify-content:center; position:fixed; inset:0; background: rgba(0,0,0,0.35); z-index:2000;">
+        <div class="modal" style="background:#ffffff; color:#111; padding:16px; border-radius:8px; min-width:300px; max-width:min(90vw,560px); width:fit-content; margin:16px; box-shadow:0 6px 24px rgba(0,0,0,0.2); border:1px solid #ddd;">
+            <h3>Settings</h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:4px;">View mode</label>
+                    <button id="view-toggle" title="Toggle view">Grid</button>
+                </div>
+                <div>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
+                        <input type="checkbox" id="dark-mode-toggle" />
+                        Enable AMOLED dark mode
+                    </label>
+                </div>
+            </div>
+            <div class="modal-actions" style="display:flex; gap:8px; justify-content:flex-end;">
+                <button id="settings-close">Close</button>
+            </div>
+        </div>
     </div>
 
     <style>
@@ -221,6 +228,7 @@
         if (modal) { modal.style.display = 'flex'; document.body.classList.add('modal-open'); }
     }
     function closeModal(modal) { modal.style.display = 'none'; document.body.classList.remove('modal-open'); }
+    function showModal(modal) { modal.style.display = 'flex'; document.body.classList.add('modal-open'); }
 
     function toggleViewMode() {
         const isGrid = itemsEl.classList.contains('grid');
@@ -249,22 +257,8 @@
         const sb = document.getElementById('settings-btn');
         if (sb) sb.addEventListener('click', (e) => {
             e.preventDefault();
-            const sec = document.getElementById('settings-section');
-            const ft = document.getElementById('filter-title');
-            const fc = document.getElementById('filters-content');
-            const showing = sec.style.display !== 'none';
-            if (showing) {
-                sec.style.display = 'none';
-                ft.style.display = '';
-                fc.style.display = 'flex';
-            } else {
-                sec.style.display = '';
-                ft.style.display = 'none';
-                fc.style.display = 'none';
-                sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                sec.style.boxShadow = '0 0 0 2px #3b66ff inset';
-                setTimeout(() => { sec.style.boxShadow = ''; }, 800);
-            }
+            const modal = document.getElementById('settings-modal');
+            if (modal) showModal(modal);
         });
         const ftb = document.getElementById('filter-toggle');
         if (ftb) ftb.addEventListener('click', () => {
@@ -301,6 +295,8 @@
         });
         const vtb = document.getElementById('view-toggle');
         if (vtb) vtb.addEventListener('click', toggleViewMode);
+        const sc = document.getElementById('settings-close');
+        if (sc) sc.addEventListener('click', () => closeModal(document.getElementById('settings-modal')));
         render();
     });
     </script>
